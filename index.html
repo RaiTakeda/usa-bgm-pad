@@ -32,7 +32,7 @@
   --btn:#1b2736;
   --btnActive:#20344a;
   --radius:16px;
-  --gap:10px;
+  --gap:14px;
 }
 *{box-sizing:border-box;}
 body{
@@ -63,7 +63,12 @@ h1{margin:0;font-size:18px;}
 
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);}
 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap);}
-.row-single{margin-top:var(--gap);}
+.row-single{
+  margin-top: var(--gap);
+  display: grid;
+  grid-template-columns: 1fr;
+}
+
 
 button{
   border:none;
@@ -75,6 +80,7 @@ button{
   padding:14px 8px;
   min-height:56px;
   box-shadow:0 6px 14px rgba(0,0,0,.2);
+  width:100%;
 }
 button:active{transform:translateY(1px);}
 button.playing{
@@ -303,6 +309,7 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
 
 
