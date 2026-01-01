@@ -271,10 +271,11 @@ function stopFade(){
     audio.currentTime = 0;
 
     // 次回再生用にゲインを静かに戻す（停止後なので音は出ない）
-    const t = audioCtx.currentTime;
-    gainNode.gain.cancelScheduledValues(t);
-    gainNode.gain.setValueAtTime(1.0, t);
-    currentGain = 1.0;
+    //const t = audioCtx.currentTime;
+    //gainNode.gain.cancelScheduledValues(t);
+    //gainNode.gain.setValueAtTime(1.0, t);
+    //currentGain = 1.0;
+    currentGain = 0; // そのまま（または 0 にしてもOK）
 
     document.getElementById("nowPlaying").textContent = "（なし）";
     document.querySelectorAll(".playing").forEach(b => b.classList.remove("playing"));
@@ -302,6 +303,7 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
 
 
