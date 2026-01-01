@@ -140,7 +140,7 @@ button.stop{
 <script>
 const AUDIO_BASE = "audio/";
 const audio = new Audio();
-audio.volume = 1.0;
+  
 // --- iOS Safari対策：Web Audioでフェードさせる ---
 let audioCtx = null;
 let gainNode = null;
@@ -194,28 +194,35 @@ const tracksMusic = [
 function clearFade(){
   if(fadeTimer){clearInterval(fadeTimer);fadeTimer=null;}
 }
-
 function play(track){
   clearFade();
-    // iOS Safari対策
   ensureAudioGraph();
 
-  // もしフェード中に別曲押されたら、音量を即復帰
+  // ★曲ごとの音量（vol未指定なら1.0）
+  const target = (typeof track.vol === "number") ? track.vol : 1.0;
+
+  // フェード中でも即復帰＆曲別音量へ
   const now = audioCtx.currentTime;
   gainNode.gain.cancelScheduledValues(now);
-  gainNode.gain.setValueAtTime(1.0, now);
-  currentGain = 1.0;
-  
+  gainNode.gain.setValueAtTime(target, now);
+  currentGain = target;
+
   audio.pause();
-  audio.currentTime=0;
-  audio.src=AUDIO_BASE+track.f;
-  //audio.volume = 1.0;
-  audio.play();
-  document.getElementById("nowPlaying").textContent=track.b;
+  audio.currentTime = 0;
+  audio.src = AUDIO_BASE + track.f;
+
+  // iOS対策：play() 失敗を握りつぶさずログに出す（任意）
+  const p = audio.play();
+  if (p && typeof p.catch === "function") {
+    p.catch(err => console.error("audio.play() failed:", err));
+  }
+
+  document.getElementById("nowPlaying").textContent = track.b;
   document.querySelectorAll("button[data-k]").forEach(b=>{
-    b.classList.toggle("playing", b.dataset.k===track.k);
+    b.classList.toggle("playing", b.dataset.k === track.k);
   });
 }
+
 
 let stopTimer = null;        // 追加：停止タイマー
 let currentGain = 1.0;       // 追加：現在ゲインを自前で管理
@@ -295,6 +302,7 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
 
 
