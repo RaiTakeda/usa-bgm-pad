@@ -187,8 +187,8 @@ const tracksOrgan = [
 ];
 
 const tracksMusic = [
- {k:"A",b:"大谷",f:"Shohei Ohtani Walk Up Song 2025.mp3"},
- {k:"B",b:"山本",f:"Yoshinobu Yamamoto Warm Up Song 2025.mp3"},
+ {k:"A",b:"大谷",f:"Shohei Ohtani Walk Up Song 2025.mp3",vol: 0.6},
+ {k:"B",b:"山本",f:"Yoshinobu Yamamoto Warm Up Song 2025.mp3",vol: 0.6},
 ];
 
 function clearFade(){
@@ -204,6 +204,7 @@ function play(track){
   const now = audioCtx.currentTime;
   gainNode.gain.cancelScheduledValues(now);
   gainNode.gain.setValueAtTime(1.0, now);
+  currentGain = 1.0;
   
   audio.pause();
   audio.currentTime=0;
@@ -216,43 +217,64 @@ function play(track){
   });
 }
 
+let stopTimer = null;        // 追加：停止タイマー
+let currentGain = 1.0;       // 追加：現在ゲインを自前で管理
+
 function stopFade(){
   if (audio.paused) return;
 
-  // フェード中タイマー（旧方式）が残っていたら止める
+  // 旧タイマー類を止める
   if (fadeTimer){
     clearInterval(fadeTimer);
     fadeTimer = null;
   }
+  if (stopTimer){
+    clearTimeout(stopTimer);
+    stopTimer = null;
+  }
 
-  // iOS Safari対策
   ensureAudioGraph();
 
-  const durationMs = 2000;          // ←ここを変えると秒数が変わる
+  const durationMs = 2000;
   const durationSec = durationMs / 1000;
   const now = audioCtx.currentTime;
 
-  // 現在のゲイン値から滑らかに0へ
+  // スケジュールをリセットして「今のゲイン」を確定させる
   gainNode.gain.cancelScheduledValues(now);
 
-  // cancel後の値がズレることがあるので、念のため現在値をセット
-  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
-  gainNode.gain.linearRampToValueAtTime(0.0, now + durationSec);
+  // ★ここが重要：gainNode.gain.value を信用せず、自前の currentGain を使う
+  // （フェード中に stop を押しても破綻しにくい）
+  gainNode.gain.setValueAtTime(currentGain, now);
+  gainNode.gain.linearRampToValueAtTime(0.0001, now + durationSec); // 0だとポップが出る環境があるので僅かに残す
+  currentGain = 0.0001;
 
-  // フェード完了後に停止＋ゲイン復帰
-  setTimeout(() => {
+  // ★AudioContextの時刻に合わせて止める（setTimeoutのズレ対策）
+  const targetTime = now + durationSec;
+
+  // JS側で待つが、ズレても audioCtx.currentTime を見て調整する
+  stopTimer = setTimeout(() => {
+    // まだ終わってないなら、少しだけ待ち直す（Safariのズレ保険）
+    const remain = targetTime - audioCtx.currentTime;
+    if (remain > 0.01){
+      stopTimer = setTimeout(arguments.callee, Math.ceil(remain * 1000));
+      return;
+    }
+
     audio.pause();
     audio.currentTime = 0;
 
+    // 次回再生用にゲインを静かに戻す（停止後なので音は出ない）
     const t = audioCtx.currentTime;
     gainNode.gain.cancelScheduledValues(t);
     gainNode.gain.setValueAtTime(1.0, t);
+    currentGain = 1.0;
 
     document.getElementById("nowPlaying").textContent = "（なし）";
     document.querySelectorAll(".playing").forEach(b => b.classList.remove("playing"));
+
+    stopTimer = null;
   }, durationMs);
 }
-
 
 document.getElementById("stopBtn").onclick=stopFade;
 
@@ -273,6 +295,7 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
 
 
