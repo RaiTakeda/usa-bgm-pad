@@ -111,8 +111,8 @@ button.stop{
 
 <body>
 <div class="wrap">
-  <h1>野球BGMパッド</h1>
-  <p class="hint">停止は3秒フェードアウト</p>
+  <h1>MLBサウンドボックス</h1>
+  <p class="hint">停止はフェードアウト</p>
 
   <section class="section">
     <div class="section-title">ORGAN</div>
@@ -192,7 +192,7 @@ function stopFade(){
   }
 
   const startVol = audio.volume;   // 現在の音量からフェード開始
-  const duration = 3000;
+  const duration = 2000;
   const t0 = performance.now();
 
   fadeTimer = setInterval(() => {
@@ -238,6 +238,7 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
 
 
