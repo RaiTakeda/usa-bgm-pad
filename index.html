@@ -141,6 +141,32 @@ button.stop{
 const AUDIO_BASE = "audio/";
 const audio = new Audio();
 audio.volume = 1.0;
+// --- iOS Safari対策：Web Audioでフェードさせる ---
+let audioCtx = null;
+let gainNode = null;
+let sourceNode = null;
+
+function ensureAudioGraph(){
+  if (!audioCtx){
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    gainNode = audioCtx.createGain();
+    gainNode.gain.value = 1.0;
+    gainNode.connect(audioCtx.destination);
+  }
+
+  // iOSはユーザー操作後でもsuspendedが残ることがある
+  if (audioCtx.state === "suspended"){
+    audioCtx.resume();
+  }
+
+  // MediaElementSourceは同じaudio要素に対して1回だけ作る制約があるので注意
+  // → 既に作ってあるなら再作成しない
+  if (!sourceNode){
+    sourceNode = audioCtx.createMediaElementSource(audio);
+    sourceNode.connect(gainNode);
+  }
+}
+
 
 let fadeTimer = null;
 
@@ -171,10 +197,18 @@ function clearFade(){
 
 function play(track){
   clearFade();
+    // iOS Safari対策
+  ensureAudioGraph();
+
+  // もしフェード中に別曲押されたら、音量を即復帰
+  const now = audioCtx.currentTime;
+  gainNode.gain.cancelScheduledValues(now);
+  gainNode.gain.setValueAtTime(1.0, now);
+  
   audio.pause();
   audio.currentTime=0;
   audio.src=AUDIO_BASE+track.f;
-  audio.volume = 1.0;
+  //audio.volume = 1.0;
   audio.play();
   document.getElementById("nowPlaying").textContent=track.b;
   document.querySelectorAll("button[data-k]").forEach(b=>{
@@ -185,39 +219,40 @@ function play(track){
 function stopFade(){
   if (audio.paused) return;
 
-  // フェード中に停止ボタン連打されても壊れないように
+  // フェード中タイマー（旧方式）が残っていたら止める
   if (fadeTimer){
     clearInterval(fadeTimer);
     fadeTimer = null;
   }
 
-  const startVol = audio.volume;   // 現在の音量からフェード開始
-  const duration = 2000;
-  const t0 = performance.now();
+  // iOS Safari対策
+  ensureAudioGraph();
 
-  fadeTimer = setInterval(() => {
-    const elapsed = performance.now() - t0;
-    const t = elapsed / duration;
+  const durationMs = 2000;          // ←ここを変えると秒数が変わる
+  const durationSec = durationMs / 1000;
+  const now = audioCtx.currentTime;
 
-    // 先に終了判定（tが1超えたら止める）
-    if (t >= 1) {
-      clearInterval(fadeTimer);
-      fadeTimer = null;
+  // 現在のゲイン値から滑らかに0へ
+  gainNode.gain.cancelScheduledValues(now);
 
-      audio.volume = 1.0;          // 次回再生に備えて戻す
-      audio.pause();
-      audio.currentTime = 0;
+  // cancel後の値がズレることがあるので、念のため現在値をセット
+  gainNode.gain.setValueAtTime(gainNode.gain.value, now);
+  gainNode.gain.linearRampToValueAtTime(0.0, now + durationSec);
 
-      document.getElementById("nowPlaying").textContent = "（なし）";
-      document.querySelectorAll(".playing").forEach(b => b.classList.remove("playing"));
-      return;
-    }
+  // フェード完了後に停止＋ゲイン復帰
+  setTimeout(() => {
+    audio.pause();
+    audio.currentTime = 0;
 
-    // volumeは必ず0〜1に丸める（保険）
-    const v = startVol * (1 - t);
-    audio.volume = Math.max(0, Math.min(1, v));
-  }, 50);
+    const t = audioCtx.currentTime;
+    gainNode.gain.cancelScheduledValues(t);
+    gainNode.gain.setValueAtTime(1.0, t);
+
+    document.getElementById("nowPlaying").textContent = "（なし）";
+    document.querySelectorAll(".playing").forEach(b => b.classList.remove("playing"));
+  }, durationMs);
 }
+
 
 document.getElementById("stopBtn").onclick=stopFade;
 
@@ -238,6 +273,7 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
 
 
