@@ -60,7 +60,7 @@ h1{margin:0;font-size:18px;}
   color:var(--muted);
   margin-bottom:8px;
 }
-
+.section .grid-3 + .grid-3 { margin-top: var(--gap); }
 .grid-3{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--gap);}
 .grid-2{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--gap);}
 .row-single{
@@ -309,6 +309,7 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
 
 
