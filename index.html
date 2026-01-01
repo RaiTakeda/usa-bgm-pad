@@ -159,6 +159,7 @@ function play(track){
   audio.pause();
   audio.currentTime=0;
   audio.src=AUDIO_BASE+track.f;
+  audio.volume = 1.0;
   audio.play();
   document.getElementById("nowPlaying").textContent=track.b;
   document.querySelectorAll("button[data-k]").forEach(b=>{
@@ -167,20 +168,40 @@ function play(track){
 }
 
 function stopFade(){
-  if(audio.paused) return;
-  const start=audio.volume;
-  const t0=Date.now();
-  fadeTimer=setInterval(()=>{
-    const t=(Date.now()-t0)/3000;
-    audio.volume=start*(1-t);
-    if(t>=1){
-      clearFade();
+  if (audio.paused) return;
+
+  // フェード中に停止ボタン連打されても壊れないように
+  if (fadeTimer){
+    clearInterval(fadeTimer);
+    fadeTimer = null;
+  }
+
+  const startVol = audio.volume;   // 現在の音量からフェード開始
+  const duration = 3000;
+  const t0 = performance.now();
+
+  fadeTimer = setInterval(() => {
+    const elapsed = performance.now() - t0;
+    const t = elapsed / duration;
+
+    // 先に終了判定（tが1超えたら止める）
+    if (t >= 1) {
+      clearInterval(fadeTimer);
+      fadeTimer = null;
+
+      audio.volume = 1.0;          // 次回再生に備えて戻す
       audio.pause();
-      audio.volume=1.0;
-      document.getElementById("nowPlaying").textContent="（なし）";
-      document.querySelectorAll(".playing").forEach(b=>b.classList.remove("playing"));
+      audio.currentTime = 0;
+
+      document.getElementById("nowPlaying").textContent = "（なし）";
+      document.querySelectorAll(".playing").forEach(b => b.classList.remove("playing"));
+      return;
     }
-  },50);
+
+    // volumeは必ず0〜1に丸める（保険）
+    const v = startVol * (1 - t);
+    audio.volume = Math.max(0, Math.min(1, v));
+  }, 50);
 }
 
 document.getElementById("stopBtn").onclick=stopFade;
@@ -202,4 +223,5 @@ tracksMusic.forEach(t=>music.appendChild(makeBtn(t)));
 </script>
 </body>
 </html>
+
 
